@@ -2,6 +2,7 @@ import { collectMessages, latestMessages, SourceError } from "./source.mts";
 import type { Collection, Message } from "./source.mts";
 
 export interface Snapshot {
+  schedulePaused?: boolean;
   messages: Message[];
   lastSuccessAt: string | null;
   lastAttemptAt: string | null;

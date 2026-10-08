@@ -46,7 +46,7 @@ export default function MessageList({ initialSnapshot }: { initialSnapshot: Snap
 
   const delayed = readFailed || snapshot.status === "error" || snapshot.status === "unavailable" ||
     (!!snapshot.lastSuccessAt && now - Date.parse(snapshot.lastSuccessAt) > SYNC_STALE_AFTER_MS);
-  const statusLabel = delayed ? "同步延迟" : snapshot.status === "running" ? "正在同步" : snapshot.lastSuccessAt ? "同步正常" : "等待首次同步";
+  const statusLabel = snapshot.schedulePaused ? "自动同步已暂停" : delayed ? "同步延迟" : snapshot.status === "running" ? "正在同步" : snapshot.lastSuccessAt ? "同步正常" : "等待首次同步";
   const starredCount = snapshot.messages.filter(message => message.isResetMention).length;
 
   return (
@@ -57,15 +57,16 @@ export default function MessageList({ initialSnapshot }: { initialSnapshot: Snap
             <span className="brand-icon" aria-hidden="true"><RefreshCw size={23} strokeWidth={2.2} /></span>
             <div><p className="account-label">Tibo <span>·</span> @thsottiaux</p><h1>Tibo-<span>Reset</span>-EveryDay</h1></div>
           </div>
-          <p className={`sync-status${delayed ? " delayed" : ""}`} aria-live="polite">{delayed ? <TriangleAlert size={15} aria-hidden="true" /> : <CheckCircle2 size={15} aria-hidden="true" />}{statusLabel}</p>
+          <p className={`sync-status${delayed || snapshot.schedulePaused ? " delayed" : ""}`} aria-live="polite">{delayed || snapshot.schedulePaused ? <TriangleAlert size={15} aria-hidden="true" /> : <CheckCircle2 size={15} aria-hidden="true" />}{statusLabel}</p>
         </div>
         <div className="sync-info">
           <div><span className="sync-label">最近成功同步</span><p>{snapshot.lastSuccessAt ? formatDate(snapshot.lastSuccessAt) : "—"}</p></div>
-          <div><span className="sync-label">下次计划 <span className="timezone">/ 北京时间</span></span><p>{formatDate(nextSyncAt(now))}</p></div>
-          <div className="cadence"><Clock3 size={16} aria-hidden="true" /><span>每 <strong>{SYNC_INTERVAL_MINUTES}</strong> 分钟同步</span></div>
+          {!snapshot.schedulePaused && <div><span className="sync-label">下次计划 <span className="timezone">/ 北京时间</span></span><p>{formatDate(nextSyncAt(now))}</p></div>}
+          <div className="cadence"><Clock3 size={16} aria-hidden="true" /><span>{snapshot.schedulePaused ? "计划间隔 " : "每 "}<strong>{SYNC_INTERVAL_MINUTES}</strong>{snapshot.schedulePaused ? " 分钟 · 暂停中" : " 分钟同步"}</span></div>
         </div>
       </header>
-      {delayed && <p className="notice" role="status">{readFailed ? "暂时无法读取更新，保留当前消息。" : snapshot.lastSuccessAt ? "当前同步有延迟，以下为最近成功获取的消息。" : "数据暂不可用，正在等待下一次同步。"}</p>}
+      {snapshot.schedulePaused && <p className="notice" role="status">自动同步暂时暂停，以下为最近保存的消息。</p>}
+      {delayed && !snapshot.schedulePaused && <p className="notice" role="status">{readFailed ? "暂时无法读取更新，保留当前消息。" : snapshot.lastSuccessAt ? "当前同步有延迟，以下为最近成功获取的消息。" : "数据暂不可用，正在等待下一次同步。"}</p>}
       {snapshot.warning && <p className="notice" role="status">{snapshot.warning}</p>}
       <div className="section-heading"><h2>最近消息</h2><p>{snapshot.messages.length} 条收录 <span>·</span> <Star size={14} aria-hidden="true" /> {starredCount} 条标星</p></div>
       {snapshot.messages.length ? (
