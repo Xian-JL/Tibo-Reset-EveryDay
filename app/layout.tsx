@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Tibo-Reset-EveryDay",
-  description: "每30分钟同步 Codex Resets，查看最近15条 Tibo 额度重置消息的中文和英文原文。",
+  description: "每70分钟同步 Codex Resets，查看最近15条 Tibo 额度重置消息的中文和英文原文。",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

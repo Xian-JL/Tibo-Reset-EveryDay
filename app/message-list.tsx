@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import type { Snapshot } from "@/lib/sync.mts";
+import { nextSyncAt, SYNC_INTERVAL_MINUTES, SYNC_STALE_AFTER_MS } from "@/lib/schedule.mts";
 
 const dateFormatter = new Intl.DateTimeFormat("zh-CN", {
   timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit",
   hour: "2-digit", minute: "2-digit", hourCycle: "h23",
 });
 function formatDate(value: string) { return dateFormatter.format(new Date(value)); }
-function nextSync(now: number) { return new Date((Math.floor(now / 1_800_000) + 1) * 1_800_000).toISOString(); }
 
 export default function MessageList({ initialSnapshot }: { initialSnapshot: Snapshot }) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
@@ -39,7 +39,7 @@ export default function MessageList({ initialSnapshot }: { initialSnapshot: Snap
   }, []);
 
   const delayed = readFailed || snapshot.status === "error" || snapshot.status === "unavailable" ||
-    (!!snapshot.lastSuccessAt && now - Date.parse(snapshot.lastSuccessAt) > 45 * 60_000);
+    (!!snapshot.lastSuccessAt && now - Date.parse(snapshot.lastSuccessAt) > SYNC_STALE_AFTER_MS);
   const statusLabel = delayed ? "同步延迟" : snapshot.status === "running" ? "正在同步" : snapshot.lastSuccessAt ? "同步正常" : "等待首次同步";
 
   return (
@@ -49,8 +49,8 @@ export default function MessageList({ initialSnapshot }: { initialSnapshot: Snap
         <div className="sync-info" aria-live="polite">
           <p className={`sync-status${delayed ? " delayed" : ""}`}>{statusLabel}</p>
           <p>最近成功同步：{snapshot.lastSuccessAt ? formatDate(snapshot.lastSuccessAt) : "—"}</p>
-          <p>每 30 分钟同步 · 北京时间</p>
-          <p>下次计划：{formatDate(nextSync(now))}</p>
+          <p>每 {SYNC_INTERVAL_MINUTES} 分钟同步 · 北京时间</p>
+          <p>下次计划：{formatDate(nextSyncAt(now))}</p>
         </div>
       </header>
       {delayed && <p className="notice" role="status">{readFailed ? "暂时无法读取更新，保留当前消息。" : snapshot.lastSuccessAt ? "当前同步有延迟，以下为最近成功获取的消息。" : "数据暂不可用，正在等待下一次同步。"}</p>}
