@@ -2,6 +2,14 @@
 
 简洁的 Tibo 额度重置消息列表。来源为 [Codex Resets 中文页](https://codex-resets.com/zh-CN)，保存最近 15 条消息，按时间倒序显示中文、英文原文、北京时间和原帖链接。明确提及额度 reset 的消息标星。
 
+## 界面与验收
+
+深色标题区清晰展示同步状态与时间；最新消息独立标注，reset 消息使用金色星标和侧边线突出。中文正文中的重置、额度和适用账户等词句高亮，英文原文保留在独立阅读区域，完整内容与时间排序不受样式调整影响。
+
+桌面及手机布局已检查，详见 [验收记录](docs/验收记录.md) 和 [开发大纲](docs/开发大纲.md)。
+
+![桌面预览](docs/screenshots/desktop.jpg)
+
 ## 实现
 
 - React / TypeScript / Vinext；Cloudflare Worker 服务端；D1 持久化。
@@ -28,7 +36,7 @@ npm run dev
 预览地址以启动日志为准，默认 `http://127.0.0.1:5173/`。执行一次 `POST /api/sync` 后可看到真实消息；`GET /api/messages` 用于读回结果。本地调试不提供长期后台调度。
 
 ```sh
-node --experimental-strip-types --test tests/source.test.mts tests/sync.test.mts
+node --experimental-strip-types --test tests/source.test.mts tests/sync.test.mts tests/schedule.test.mts
 node --experimental-strip-types scripts/probe-source.mts
 node node_modules/typescript/bin/tsc --noEmit
 npm run build

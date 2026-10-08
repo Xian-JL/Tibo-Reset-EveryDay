@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CheckCircle2, Clock3, Link2, RefreshCw, Star, TriangleAlert } from "lucide-react";
 import type { Snapshot } from "@/lib/sync.mts";
 import { nextSyncAt, SYNC_INTERVAL_MINUTES, SYNC_STALE_AFTER_MS } from "@/lib/schedule.mts";
 
@@ -9,6 +10,11 @@ const dateFormatter = new Intl.DateTimeFormat("zh-CN", {
   hour: "2-digit", minute: "2-digit", hourCycle: "h23",
 });
 function formatDate(value: string) { return dateFormatter.format(new Date(value)); }
+
+function EmphasizedText({ text }: { text: string }) {
+  const parts = text.split(/(https?:\/\/\S+|备用重置额度|备用额度|使用额度|用量限制|所有付费用户|所有账户|重置卡|重置|\b(?:banked\s+reset|usage\s+limits?|reset(?:ting|s)?|reseting|resetted|reseted)\b)/gi);
+  return <>{parts.map((part, index) => index % 2 ? /^https?:\/\//i.test(part) ? <span className="text-url" key={index}>{part}</span> : <mark key={index}>{part}</mark> : part)}</>;
+}
 
 export default function MessageList({ initialSnapshot }: { initialSnapshot: Snapshot }) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
@@ -41,39 +47,48 @@ export default function MessageList({ initialSnapshot }: { initialSnapshot: Snap
   const delayed = readFailed || snapshot.status === "error" || snapshot.status === "unavailable" ||
     (!!snapshot.lastSuccessAt && now - Date.parse(snapshot.lastSuccessAt) > SYNC_STALE_AFTER_MS);
   const statusLabel = delayed ? "同步延迟" : snapshot.status === "running" ? "正在同步" : snapshot.lastSuccessAt ? "同步正常" : "等待首次同步";
+  const starredCount = snapshot.messages.filter(message => message.isResetMention).length;
 
   return (
     <main className="page">
       <header className="page-header">
-        <h1>Tibo-Reset-EveryDay</h1>
-        <div className="sync-info" aria-live="polite">
-          <p className={`sync-status${delayed ? " delayed" : ""}`}>{statusLabel}</p>
-          <p>最近成功同步：{snapshot.lastSuccessAt ? formatDate(snapshot.lastSuccessAt) : "—"}</p>
-          <p>每 {SYNC_INTERVAL_MINUTES} 分钟同步 · 北京时间</p>
-          <p>下次计划：{formatDate(nextSyncAt(now))}</p>
+        <div className="header-top">
+          <div className="brand">
+            <span className="brand-icon" aria-hidden="true"><RefreshCw size={23} strokeWidth={2.2} /></span>
+            <div><p className="account-label">Tibo <span>·</span> @thsottiaux</p><h1>Tibo-<span>Reset</span>-EveryDay</h1></div>
+          </div>
+          <p className={`sync-status${delayed ? " delayed" : ""}`} aria-live="polite">{delayed ? <TriangleAlert size={15} aria-hidden="true" /> : <CheckCircle2 size={15} aria-hidden="true" />}{statusLabel}</p>
+        </div>
+        <div className="sync-info">
+          <div><span className="sync-label">最近成功同步</span><p>{snapshot.lastSuccessAt ? formatDate(snapshot.lastSuccessAt) : "—"}</p></div>
+          <div><span className="sync-label">下次计划 <span className="timezone">/ 北京时间</span></span><p>{formatDate(nextSyncAt(now))}</p></div>
+          <div className="cadence"><Clock3 size={16} aria-hidden="true" /><span>每 <strong>{SYNC_INTERVAL_MINUTES}</strong> 分钟同步</span></div>
         </div>
       </header>
       {delayed && <p className="notice" role="status">{readFailed ? "暂时无法读取更新，保留当前消息。" : snapshot.lastSuccessAt ? "当前同步有延迟，以下为最近成功获取的消息。" : "数据暂不可用，正在等待下一次同步。"}</p>}
       {snapshot.warning && <p className="notice" role="status">{snapshot.warning}</p>}
+      <div className="section-heading"><h2>最近消息</h2><p>{snapshot.messages.length} 条收录 <span>·</span> <Star size={14} aria-hidden="true" /> {starredCount} 条标星</p></div>
       {snapshot.messages.length ? (
         <ol className="messages" aria-label="最近15条重置相关消息">
-          {snapshot.messages.map(message => (
+          {snapshot.messages.map((message, index) => (
             <li key={message.id}>
-              <article className={`message${message.isResetMention ? " starred" : ""}`}>
+              <article className={`message${message.isResetMention ? " starred" : ""}${index === 0 ? " latest" : ""}`}>
                 <div className="message-meta">
+                  <span className="message-number" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
                   <time dateTime={message.messageAt}>{formatDate(message.messageAt)}</time>
+                  {index === 0 && <span className="latest-badge">最新消息</span>}
                   {message.timeKind === "observed" && <span>首次观察时间</span>}
-                  {message.isResetMention && <span className="star"><span aria-hidden="true">★ </span>明确提及 reset</span>}
+                  {message.isResetMention && <span className="star"><Star size={14} fill="currentColor" aria-hidden="true" />明确提及 reset</span>}
                   {message.resetType === "banked" && <span className="kind">备用重置额度</span>}
                 </div>
-                <p className={`message-text${message.textZh ? "" : " translation-missing"}`} lang="zh-CN">{message.textZh ?? "中文译文暂未提供"}</p>
+                <p className={`message-text translation${message.textZh ? "" : " translation-missing"}`} lang="zh-CN">{message.textZh ? <EmphasizedText text={message.textZh} /> : "中文译文暂未提供"}</p>
                 <div className="original" lang="en">
-                  <span className="original-label" lang="zh-CN">英文原文</span>
+                  <span className="original-label" lang="zh-CN"><span className="language-tag" aria-hidden="true">EN</span>英文原文</span>
                   <p className="message-text">{message.textEn}</p>
                 </div>
                 <div className="message-footer">
-                  <a href={message.originalUrl} target="_blank" rel="noopener noreferrer">查看原帖<span className="sr-only">（在新窗口打开）</span></a>
-                  {message.contentIncomplete && <span className="incomplete">来源内容可能不完整</span>}
+                  <a href={message.originalUrl} target="_blank" rel="noopener noreferrer"><Link2 size={15} aria-hidden="true" />查看原帖<span className="sr-only">（在新窗口打开）</span></a>
+                  {message.contentIncomplete && <span className="incomplete"><TriangleAlert size={14} aria-hidden="true" />来源内容可能不完整</span>}
                 </div>
               </article>
             </li>
